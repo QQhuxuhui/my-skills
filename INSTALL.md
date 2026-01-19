@@ -45,7 +45,15 @@ which codex
 cd ~/.codex/superpowers
 git pull  # 更新到最新版本
 
-# 3. 验证Codex可以调用Superpowers技能
+# 3. 确保Codex端已安装 ui-ux-pro-max（用于前端开发）
+# 检查是否已安装
+ls ~/.codex/skills/ | grep ui-ux-pro-max
+
+# 如果未安装，请参考 ui-ux-pro-max 的安装文档
+# 通常安装方式：
+# cp -r /path/to/ui-ux-pro-max ~/.codex/skills/
+
+# 4. 验证Codex可以调用Superpowers技能
 codex exec --prompt "Run ~/.codex/superpowers/.codex/superpowers-codex use-skill superpowers:using-superpowers"
 ```
 
@@ -109,7 +117,11 @@ ls -la ~/.claude/skills/sparkcode-dev-superpower/
 ls ~/.claude/skills/sparkcode-dev-superpower/SKILL.md
 # 必须是 SKILL.md，不是 skill.md 或 Skill.md
 
-# 3. 确认YAML frontmatter格式
+# 3. 检查 ui-ux-pro-max 技能
+ls ~/.codex/skills/ui-ux-pro-max/
+# 应该看到 SKILL.md 文件
+
+# 4. 确认YAML frontmatter格式
 head -5 ~/.claude/skills/sparkcode-dev-superpower/SKILL.md
 # 应该看到：
 # ---
