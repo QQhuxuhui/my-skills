@@ -147,3 +147,49 @@ fi
 **输出**: 实现的代码 + 测试结果
 
 **下一步**: 执行成功后，进入阶段4
+
+### 阶段4: 代码审查（Codex审查）
+
+**目标**: 调用Codex审查未提交的代码变更
+
+**步骤4.1: 调用Codex审查**
+
+使用 Bash 工具执行：
+
+```bash
+codex exec --full-auto \
+  --prompt "Run ~/.codex/superpowers/.codex/superpowers-codex \
+  use-skill superpowers:requesting-code-review"
+```
+
+**步骤4.2: 解析审查报告**
+
+从Codex输出中提取：
+- **Critical**: 严重问题（安全漏洞、逻辑错误）
+- **Major**: 重要问题（性能问题、代码质量）
+- **Minor**: 次要问题（代码风格、命名）
+- **Suggestions**: 改进建议
+
+**步骤4.3: 向用户展示结果**
+
+```
+审查结果:
+  ✗ Critical: X
+  ⚠ Major: Y
+  ℹ Minor: Z
+  💡 Suggestions: W
+
+选项:
+  ✓ 通过，进入分支完成阶段
+  🔧 修复问题后重新审查
+  👀 查看详细报告
+```
+
+**决策逻辑**:
+- 如果有Critical问题: 强烈建议修复后再继续
+- 如果只有Major/Minor问题: 可以选择继续或修复
+- 如果无问题: 自动进入下一阶段
+
+**输出**: 审查报告
+
+**下一步**: 用户确认后，进入阶段5
