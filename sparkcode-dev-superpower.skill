@@ -193,3 +193,27 @@ codex exec --full-auto \
 **输出**: 审查报告
 
 **下一步**: 用户确认后，进入阶段5
+
+### 阶段5: 分支完成
+
+**目标**: 完成开发工作，决定如何集成代码
+
+**执行**:
+
+调用 @superpowers:finishing-a-development-branch 技能：
+
+```
+使用 Skill 工具调用 superpowers:finishing-a-development-branch
+```
+
+**流程**:
+1. 运行最终测试验证
+2. 展示变更摘要
+3. 提供选项:
+   - Merge到主分支
+   - 创建Pull Request
+   - 清理分支
+
+**输出**: 完成的功能分支
+
+**完成**: 工作流结束
