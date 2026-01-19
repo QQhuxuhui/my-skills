@@ -21,3 +21,20 @@ description: 完整的软件开发工作流，集成Claude端Superpowers（设�
 ## 工作流程
 
 本技能包含5个阶段，按顺序执行。
+
+### 阶段1: 需求理解与设计
+
+**目标**: 通过提问理解用户需求，探讨技术方案
+
+**执行**:
+
+调用 @superpowers:brainstorming 技能：
+
+```
+使用 Skill 工具调用 superpowers:brainstorming
+传递用户的需求描述作为参数
+```
+
+**输出**: 设计文档和需求澄清
+
+**下一步**: 用户确认设计后，进入阶段2
