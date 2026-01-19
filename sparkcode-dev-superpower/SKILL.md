@@ -437,6 +437,74 @@ Claude: 准备完成分支...
 (调用 superpowers:finishing-a-development-branch)
 ```
 
+### 前端项目示例
+
+```
+用户: /sparkcode-dev-superpower 创建一个Todo应用的前端界面
+
+Claude: 我将使用 sparkcode-dev-superpower 技能来完成这个任务。
+
+[阶段1: 需求理解与设计]
+Claude: 让我先了解一下需求...
+(调用 superpowers:brainstorming)
+
+[阶段2: 编写实现计划]
+Claude: 基于设计，我来创建实现计划...
+检测到前端需求，将在计划中标注使用 @ui-ux-pro-max
+(调用 superpowers:writing-plans)
+输出: docs/plans/2026-01-19-todo-app-frontend-plan.md
+
+计划内容示例：
+Task 1: 实现Todo列表界面
+**使用 @ui-ux-pro-max 技能实现前端界面**
+- 创建Todo列表组件
+- 设计卡片样式
+- 实现添加/删除/完成功能
+
+[阶段3: 代码实现]
+Claude: 现在调用Codex执行计划...
+(执行 codex exec --full-auto --prompt "...")
+Codex识别到 @ui-ux-pro-max 标记，自动调用该技能
+✓ Codex执行成功
+  - 完成任务: 3/3
+  - 前端界面已实现，样式精美
+
+[阶段4: 代码审查]
+Claude: 让Codex审查代码...
+(执行 codex exec --full-auto --prompt "...")
+审查结果:
+  ✗ Critical: 0
+  ⚠ Major: 0
+  ℹ Minor: 2
+
+[阶段5: 分支完成]
+Claude: 准备完成分支...
+(调用 superpowers:finishing-a-development-branch)
+```
+
+### 前后端混合项目示例
+
+```
+用户: /sparkcode-dev-superpower 实现用户管理系统（包含界面和API）
+
+[阶段2生成的计划包含]：
+Task 1: 实现用户列表界面
+**使用 @ui-ux-pro-max 技能实现前端界面**
+- 用户列表组件
+- 搜索和筛选功能
+- 分页控件
+
+Task 2: 实现用户管理API
+- CRUD端点
+- 数据验证
+- 错误处理
+
+Task 3: 集成前后端
+- API调用
+- 状态管理
+- 错误处理
+```
+
 ## 技术规格
 
 ### Codex命令格式
