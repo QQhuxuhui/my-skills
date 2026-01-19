@@ -1,0 +1,23 @@
+---
+name: sparkcode-dev-superpower
+description: 完整的软件开发工作流，集成Claude端Superpowers（设计+规划）和Codex端Superpowers（执行+审查）。当用户请求完整的开发流程或调用 /sparkcode-dev-superpower 时使用。
+---
+
+# SparkCode Dev Superpower
+
+## 概述
+
+这个技能协调Claude和Codex，实现端到端的开发工作流：
+- **Claude负责**: 需求理解、设计、规划、分支管理
+- **Codex负责**: 代码实现、测试、代码审查
+
+## 前置条件
+
+使用此技能前，请确保：
+1. Codex端已安装Superpowers
+2. 工作在共享的git仓库中
+3. 已创建 `.sparkcode/logs/` 目录
+
+## 工作流程
+
+本技能包含5个阶段，按顺序执行。
