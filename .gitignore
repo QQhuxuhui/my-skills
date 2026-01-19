@@ -1,0 +1,5 @@
+# Worktree directories
+.worktrees/
+
+# SparkCode state and logs
+.sparkcode/
