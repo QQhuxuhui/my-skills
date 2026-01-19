@@ -15,8 +15,9 @@ description: 完整的软件开发工作流，集成Claude端Superpowers（设�
 
 使用此技能前，请确保：
 1. Codex端已安装Superpowers
-2. 工作在共享的git仓库中
-3. 已创建 `.sparkcode/logs/` 目录
+2. Codex端已安装 ui-ux-pro-max 技能（用于前端开发）
+3. 工作在共享的git仓库中
+4. 已创建 `.sparkcode/logs/` 目录
 
 ## 工作流程
 
