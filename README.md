@@ -23,6 +23,9 @@ cp -r sparkcode-dev-superpower ~/.claude/skills/
 # 确保Codex端已安装Superpowers
 cd ~/.codex/superpowers
 git pull
+
+# 确保Codex端已安装 ui-ux-pro-max（用于前端开发）
+# 如果未安装，请参考 ui-ux-pro-max 的安装文档
 ```
 
 ### 3. 使用
@@ -36,8 +39,10 @@ git pull
 ### 4. 工作流
 
 1. **需求理解**: Claude通过提问理解需求
-2. **编写计划**: Claude生成详细实现计划
+2. **编写计划**: Claude生成详细实现计划，自动检测前端需求
 3. **代码实现**: Codex执行计划中的任务
+   - 前端任务：自动调用 ui-ux-pro-max 技能
+   - 后端任务：使用标准开发流程
 4. **代码审查**: Codex审查代码质量
 5. **分支完成**: Claude协助完成分支
 
