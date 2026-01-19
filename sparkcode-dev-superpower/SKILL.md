@@ -5,15 +5,16 @@ description: 完整的软件开发工作流，集成Claude端Superpowers（设�
 
 # SparkCode Dev Superpower
 
-**版本**: v1.1
+**版本**: v1.2
 **更新日期**: 2026-01-19
 
 ## 概述
 
 这个技能协调Claude和Codex，实现端到端的开发工作流：
-- **Claude负责**: 需求理解、设计、规划、分支管理
+- **Claude负责**: 需求理解、设计、规划、分支管理、任务协调
 - **Codex负责**: 代码实现、测试、代码审查
 - **前端支持**: 自动集成 ui-ux-pro-max 技能处理前端开发
+- **上下文传递**: 通过文件机制在多次Codex调用间保持状态连续性
 
 ## 前置条件
 
@@ -134,90 +135,171 @@ Task X: [任务名称]
 
 ### 阶段3: 代码实现（Codex执行）
 
-**目标**: 调用Codex执行计划中的所有任务
+**目标**: 通过文件上下文传递机制，逐个调用Codex执行计划中的任务
 
-**步骤3.1: 提取计划名称**
+**核心机制**: 使用 `.sparkcode/context.json` 作为 Claude 和 Codex 之间的上下文传递媒介，每次调用 Codex 执行单个任务，通过文件保持状态连续性。
 
-从计划文件路径提取名称：
+#### 步骤3.1: 初始化上下文环境
+
+创建目录结构和上下文文件：
 
 ```bash
-# 输入: docs/plans/2026-01-19-feature-x-plan.md
-# 输出: 2026-01-19-feature-x-plan
+# 创建目录结构
+mkdir -p .sparkcode/task-outputs
+mkdir -p .sparkcode/logs
 
-plan_file="docs/plans/2026-01-19-feature-x-plan.md"
-plan_name=$(basename "$plan_file" .md)
-echo "计划名称: $plan_name"
+# 初始化 decisions.md
+cat > .sparkcode/decisions.md <<'EOF'
+# 设计决策记录
+
+本文件记录开发过程中的重要设计决策，供后续任务参考。
+
+---
+EOF
 ```
 
-**步骤3.2: 创建状态文件**
+#### 步骤3.2: 解析计划文件生成任务列表
+
+从计划文件中提取任务，生成 `context.json`：
 
 ```bash
-mkdir -p .sparkcode/logs
-cat > .sparkcode/session-state.json <<EOF
+plan_file="docs/plans/2026-01-19-feature-x-plan.md"
+
+# Claude 需要解析计划文件，提取所有 Task，生成如下结构：
+cat > .sparkcode/context.json <<'EOF'
 {
-  "session_id": "$(uuidgen)",
-  "current_stage": "executing",
-  "plan_file": "$plan_file",
-  "plan_name": "$plan_name",
-  "codex_execution": {
-    "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-    "status": "running"
-  }
+  "session_id": "uuid-here",
+  "plan_file": "docs/plans/2026-01-19-feature-x-plan.md",
+
+  "tasks": [
+    {"id": 1, "name": "创建HTML结构", "status": "pending"},
+    {"id": 2, "name": "实现CSS样式", "status": "pending"},
+    {"id": 3, "name": "添加JS交互", "status": "pending"}
+  ],
+
+  "current_task": 1,
+  "retry_count": 0,
+
+  "files_created": [],
+
+  "last_error": null,
+  "last_updated": "2026-01-19T10:00:00Z"
 }
 EOF
 ```
 
-**步骤3.3: 调用Codex执行**
+#### 步骤3.3: 单任务执行循环
 
-使用 Bash 工具执行：
+**循环逻辑**（Claude 端执行）：
 
-```bash
-codex exec --full-auto \
-  --prompt "Run ~/.codex/superpowers/.codex/superpowers-codex \
-  use-skill superpowers:executing-plans $plan_name"
+```
+while (context.json 中有 pending 任务):
+    1. 读取 context.json 获取 current_task
+    2. 调用 Codex 执行当前任务
+    3. 解析 Codex 输出:
+       - 如果包含 TASK_COMPLETED → 继续下一个任务
+       - 如果包含 TASK_FAILED:
+           - retry_count < 1 → 更新 retry_count，重试当前任务
+           - retry_count >= 1 → 询问用户（重试/跳过/终止）
+    4. 读取更新后的 context.json
+    5. 向用户报告进度
 ```
 
-**步骤3.4: 解析执行结果**
-
-检查Codex的输出：
+**Codex 调用命令**：
 
 ```bash
-# 检查退出码
-if [ $? -eq 0 ]; then
-  echo "✓ Codex执行成功"
-else
-  echo "✗ Codex执行失败，退出码: $?"
-fi
+codex exec --full-auto --skip-git-repo-check \
+"你正在执行一个多步骤开发任务。
+
+【第一步：读取上下文】
+1. 读取 .sparkcode/context.json 了解当前状态和任务列表
+2. 读取 .sparkcode/decisions.md 了解之前的设计决策（如存在）
+3. 读取最近的任务输出 .sparkcode/task-outputs/task-{N-1}.md（如存在）
+4. 根据需要读取 files_created 中的相关文件
+
+【第二步：执行当前任务】
+执行 context.json 中 current_task 对应的任务
+如果任务标注使用 @ui-ux-pro-max，调用该技能实现前端
+
+【第三步：更新状态】
+1. 更新 context.json:
+   - 当前任务 status 改为 completed
+   - current_task 加 1（如果还有下一个任务）
+   - 更新 files_created（如有新文件）
+   - 清空 last_error
+   - 更新 last_updated
+2. 创建 .sparkcode/task-outputs/task-{当前任务ID}.md，记录：
+   - 完成了什么
+   - 关键设计决策
+   - 创建/修改的文件
+   - 后续任务需要注意的事项
+3. 如有重要设计决策，追加到 .sparkcode/decisions.md
+
+【输出要求】
+完成后输出：
+- TASK_COMPLETED 或 TASK_FAILED
+- 简要说明完成内容或失败原因"
 ```
 
-**成功标识**:
-- 退出码 = 0
-- 输出包含 "✓" 或 "Success" 或 "completed"
+#### 步骤3.4: 错误处理与重试
 
-**失败标识**:
-- 退出码 ≠ 0
-- 输出包含 "✗" 或 "Error" 或 "failed"
+**自动重试逻辑**：
 
-**步骤3.5: 向用户展示结果**
+```
+如果 Codex 输出包含 TASK_FAILED:
+    读取 context.json 的 retry_count
 
-提取并展示关键信息：
-- 完成的任务数
-- 通过的测试数
-- 新增/修改的文件
+    如果 retry_count < 1:
+        更新 context.json: retry_count = retry_count + 1
+        重新调用 Codex 执行同一任务
 
-**错误处理**:
+    否则:
+        使用 AskUserQuestion 询问用户:
+        选项:
+          a) 再次重试
+          b) 跳过此任务，继续下一个
+          c) 终止执行
 
-如果执行失败：
-1. 展示错误信息
-2. 询问用户：
-   - a) 重试执行
-   - b) 修改计划后重试
-   - c) 手动介入调试
-   - d) 放弃当前任务
+        根据用户选择:
+          a) 重置 retry_count = 0，重试
+          b) 标记任务为 skipped，current_task + 1
+          c) 结束阶段3，进入错误恢复流程
+```
 
-**输出**: 实现的代码 + 测试结果
+#### 步骤3.5: 进度报告
 
-**下一步**: 执行成功后，进入阶段4
+每完成一个任务后，向用户报告：
+
+```
+任务进度: [3/5] ████████████░░░░░░░░ 60%
+
+✓ Task 1: 创建HTML结构
+✓ Task 2: 实现CSS样式
+▶ Task 3: 添加JS交互 (执行中)
+○ Task 4: 集成API
+○ Task 5: 添加测试
+
+新增文件: index.html, styles.css
+```
+
+#### 步骤3.6: 完成检查
+
+所有任务完成后：
+
+```bash
+# 读取最终的 context.json
+# 检查是否所有任务都是 completed 状态
+# 汇总执行结果
+
+echo "阶段3完成"
+echo "- 完成任务: X/Y"
+echo "- 跳过任务: Z"
+echo "- 创建文件: file1, file2, ..."
+```
+
+**输出**: 实现的代码 + 执行摘要
+
+**下一步**: 所有任务完成后，进入阶段4
 
 ### 阶段4: 代码审查（Codex审查）
 
@@ -228,8 +310,8 @@ fi
 使用 Bash 工具执行：
 
 ```bash
-codex exec --full-auto \
-  --prompt "Run ~/.codex/superpowers/.codex/superpowers-codex \
+codex exec --full-auto --skip-git-repo-check \
+  "Run ~/.codex/superpowers/.codex/superpowers-codex \
   use-skill superpowers:requesting-code-review"
 ```
 
@@ -291,33 +373,88 @@ codex exec --full-auto \
 
 ## 辅助函数
 
-### 提取计划名称
+### 初始化上下文环境
 
 ```bash
-extract_plan_name() {
+init_sparkcode_context() {
   local plan_file="$1"
-  basename "$plan_file" .md
-}
 
-# 使用示例
-plan_name=$(extract_plan_name "docs/plans/2026-01-19-feature-x-plan.md")
-echo "$plan_name"  # 输出: 2026-01-19-feature-x-plan
+  # 创建目录结构
+  mkdir -p .sparkcode/task-outputs
+  mkdir -p .sparkcode/logs
+
+  # 初始化 decisions.md
+  cat > .sparkcode/decisions.md <<'EOF'
+# 设计决策记录
+
+本文件记录开发过程中的重要设计决策，供后续任务参考。
+
+---
+EOF
+
+  echo "✓ 上下文环境初始化完成"
+}
 ```
 
-### 解析Codex输出
+### 生成 context.json
+
+Claude 解析计划文件后，生成 context.json：
+
+```bash
+# 示例：Claude 解析计划后生成
+cat > .sparkcode/context.json <<'EOF'
+{
+  "session_id": "生成的UUID",
+  "plan_file": "docs/plans/YYYY-MM-DD-feature-plan.md",
+  "tasks": [
+    {"id": 1, "name": "任务1名称", "status": "pending"},
+    {"id": 2, "name": "任务2名称", "status": "pending"}
+  ],
+  "current_task": 1,
+  "retry_count": 0,
+  "files_created": [],
+  "last_error": null,
+  "last_updated": "ISO8601时间戳"
+}
+EOF
+```
+
+### 检查是否有待执行任务
+
+```bash
+has_pending_tasks() {
+  local context_file=".sparkcode/context.json"
+
+  if [ ! -f "$context_file" ]; then
+    echo "false"
+    return 1
+  fi
+
+  # 检查是否有 pending 状态的任务
+  if grep -q '"status": "pending"' "$context_file"; then
+    echo "true"
+    return 0
+  else
+    echo "false"
+    return 1
+  fi
+}
+```
+
+### 解析 Codex 输出
 
 ```bash
 parse_codex_output() {
   local output="$1"
 
   # 检查成功标识
-  if echo "$output" | grep -qE "✓|Success|completed"; then
-    echo "SUCCESS"
+  if echo "$output" | grep -q "TASK_COMPLETED"; then
+    echo "COMPLETED"
     return 0
   fi
 
   # 检查失败标识
-  if echo "$output" | grep -qE "✗|Error|failed"; then
+  if echo "$output" | grep -q "TASK_FAILED"; then
     echo "FAILED"
     return 1
   fi
@@ -327,27 +464,29 @@ parse_codex_output() {
 }
 ```
 
-### 创建状态文件
+### 更新重试计数
 
 ```bash
-create_state_file() {
-  local plan_file="$1"
-  local plan_name="$2"
+update_retry_count() {
+  local context_file=".sparkcode/context.json"
+  local current_count=$(grep -o '"retry_count": [0-9]*' "$context_file" | grep -o '[0-9]*')
+  local new_count=$((current_count + 1))
 
-  mkdir -p .sparkcode/logs
+  # 使用 sed 更新 retry_count
+  sed -i "s/\"retry_count\": $current_count/\"retry_count\": $new_count/" "$context_file"
 
-  cat > .sparkcode/session-state.json <<EOF
-{
-  "session_id": "$(uuidgen || echo "manual-$(date +%s)")",
-  "current_stage": "executing",
-  "plan_file": "$plan_file",
-  "plan_name": "$plan_name",
-  "codex_execution": {
-    "started_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
-    "status": "running"
-  }
+  echo "$new_count"
 }
-EOF
+```
+
+### 生成进度报告
+
+```bash
+generate_progress_report() {
+  local context_file=".sparkcode/context.json"
+
+  # Claude 读取 context.json 并生成可视化进度报告
+  # 示例输出格式见步骤3.5
 }
 ```
 
@@ -512,48 +651,113 @@ Task 3: 集成前后端
 
 ## 技术规格
 
-### Codex命令格式
+### 文件结构
 
-**执行计划**:
+```
+.sparkcode/
+├── context.json          # 状态和任务列表
+├── decisions.md          # 设计决策记录
+├── logs/                 # 执行日志
+└── task-outputs/         # 每个任务的输出摘要
+    ├── task-1.md
+    ├── task-2.md
+    └── ...
+```
+
+### context.json 格式
+
+```json
+{
+  "session_id": "uuid",
+  "plan_file": "docs/plans/YYYY-MM-DD-<topic>-plan.md",
+
+  "tasks": [
+    {"id": 1, "name": "任务名称", "status": "completed"},
+    {"id": 2, "name": "任务名称", "status": "in_progress"},
+    {"id": 3, "name": "任务名称", "status": "pending"},
+    {"id": 4, "name": "任务名称", "status": "skipped"}
+  ],
+
+  "current_task": 2,
+  "retry_count": 0,
+
+  "files_created": [
+    "index.html",
+    "styles.css"
+  ],
+
+  "last_error": null,
+  "last_updated": "ISO8601 timestamp"
+}
+```
+
+**任务状态说明**:
+- `pending`: 待执行
+- `in_progress`: 执行中（Codex 正在处理）
+- `completed`: 已完成
+- `skipped`: 已跳过（用户选择跳过失败任务）
+
+### task-outputs/task-X.md 格式
+
+```markdown
+# Task X: 任务名称
+
+## 完成内容
+- 具体完成了什么
+
+## 关键设计决策
+- 为什么这样实现
+- 选择了什么技术方案
+
+## 创建/修改的文件
+- file1.js (新建)
+- file2.css (修改)
+
+## 后续任务注意
+- 下一个任务需要知道的信息
+```
+
+### Codex 命令格式
+
+**单任务执行**:
 ```bash
-codex exec --full-auto \
-  --prompt "Run ~/.codex/superpowers/.codex/superpowers-codex \
-  use-skill superpowers:executing-plans <计划名称>"
+codex exec --full-auto --skip-git-repo-check \
+"你正在执行一个多步骤开发任务。
+
+【第一步：读取上下文】
+1. 读取 .sparkcode/context.json 了解当前状态和任务列表
+2. 读取 .sparkcode/decisions.md 了解之前的设计决策（如存在）
+3. 读取最近的任务输出 .sparkcode/task-outputs/task-{N-1}.md（如存在）
+4. 根据需要读取 files_created 中的相关文件
+
+【第二步：执行当前任务】
+执行 context.json 中 current_task 对应的任务
+如果任务标注使用 @ui-ux-pro-max，调用该技能实现前端
+
+【第三步：更新状态】
+1. 更新 context.json（任务状态、files_created、last_updated）
+2. 创建 .sparkcode/task-outputs/task-{当前任务ID}.md
+3. 如有重要设计决策，追加到 .sparkcode/decisions.md
+
+【输出要求】
+完成后输出：TASK_COMPLETED 或 TASK_FAILED"
 ```
 
 **代码审查**:
 ```bash
-codex exec --full-auto \
-  --prompt "Run ~/.codex/superpowers/.codex/superpowers-codex \
-  use-skill superpowers:requesting-code-review"
+codex exec --full-auto --skip-git-repo-check \
+"审查 .sparkcode/context.json 中 files_created 列出的所有文件，
+检查代码质量、安全性、最佳实践。
+输出审查报告，包含 Critical/Major/Minor/Suggestions 分类。"
 ```
 
 ### 输出解析规则
 
 **成功模式**:
-- 正则表达式: `✓|Success|completed|All tests passed`
-- 退出码: 0
+- 输出包含: `TASK_COMPLETED`
 
 **失败模式**:
-- 正则表达式: `✗|Error|failed|Exception`
-- 退出码: 非0
-
-### 状态文件格式
-
-路径: `.sparkcode/session-state.json`
-
-```json
-{
-  "session_id": "uuid",
-  "current_stage": "executing|reviewing|finishing",
-  "plan_file": "docs/plans/YYYY-MM-DD-<topic>-plan.md",
-  "plan_name": "YYYY-MM-DD-<topic>-plan",
-  "codex_execution": {
-    "started_at": "ISO8601 timestamp",
-    "status": "running|completed|failed"
-  }
-}
-```
+- 输出包含: `TASK_FAILED`
 
 ## 集成说明
 
@@ -581,6 +785,17 @@ codex exec --full-auto \
    - `docs/plans/` 目录
 
 ## 版本历史
+
+### v1.2 (2026-01-19)
+- ✨ 重构阶段3：采用文件上下文传递机制（方案C）
+- ✅ 单任务执行循环，避免上下文丢失
+- ✅ 新增 context.json 状态管理
+- ✅ 新增 task-outputs/ 任务输出记录
+- ✅ 新增 decisions.md 设计决策追踪
+- ✅ 自动重试机制（失败自动重试1次）
+- ✅ 用户可选择重试/跳过/终止
+- ✅ 进度可视化报告
+- ✅ 支持断点续传
 
 ### v1.1 (2026-01-19)
 - ✨ 添加前端集成支持
