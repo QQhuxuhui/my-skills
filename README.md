@@ -1,4 +1,17 @@
-# SparkCode Dev Superpower
+# My Skills
+
+个人 Claude Code 技能集合。
+
+## 技能列表
+
+| 技能 | 描述 |
+|------|------|
+| [sparkcode-dev-superpower](sparkcode-dev-superpower/SKILL.md) | 完整的软件开发工作流，集成Claude端和Codex端Superpowers |
+| [technical-bid-writer](technical-bid-writer/SKILL.md) | 软件/IT系统开发类技术标书写作助手 |
+
+---
+
+## SparkCode Dev Superpower
 
 完整的软件开发工作流技能，集成Claude端Superpowers和Codex端Superpowers。
 
@@ -56,6 +69,37 @@ git pull
 ## 技能文件
 
 - [sparkcode-dev-superpower/SKILL.md](sparkcode-dev-superpower/SKILL.md)
+
+---
+
+## Technical Bid Writer
+
+软件/IT系统开发类技术标书写作助手，帮助研发负责人高效撰写技术标书。
+
+### 功能
+
+- 结构化写作指导（8大章节模板）
+- 技术方案设计（架构、选型建议）
+- 内容润色优化
+- 全流程辅助
+
+### 安装
+
+```bash
+cp -r technical-bid-writer ~/.claude/skills/
+```
+
+### 使用
+
+在 Claude Code 中说：
+- "帮我写一个XX系统的技术标书"
+- "我需要准备招标响应的技术方案"
+
+### 技能文件
+
+- [technical-bid-writer/SKILL.md](technical-bid-writer/SKILL.md)
+
+---
 
 ## 许可
 
